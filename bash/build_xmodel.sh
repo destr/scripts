@@ -9,15 +9,18 @@ version=
 revision=
 no_remove=false
 
-
 # список проектов и порядок их сборки
-projects=( tbx xrti world xtss )
+projects=( tbx xrti faekfom world xtss )
 
 function remove_packages() {
 # удаляем пакеты, которые собираются.
 # если название пакета будет содержать точки, то он не будет удалён
 # $1 - название проекта
-    debian_dir="$xmodel_root_dir"/"$1"/"$debian_subdir"
+    name=$1
+    if [[ $name == "fakefom" ]]; then
+        name="/world/src/basefom/_fomxml"
+    fi
+    debian_dir="$xmodel_root_dir"/"$name"/"$debian_subdir"
     pushd "$debian_dir"
     dpkg -P `ls -1 *.install | cut -d . -f 1`
     popd
@@ -43,15 +46,19 @@ function build_xrti() {
     dpkg -i "$xrti_dir/$pkgs_subdir"/*.deb
 }
 
-function build_world() {
-    local world_dir="$xmodel_root_dir/world"
-    # собираем fakefom
-    # надо ещё удалять
-    pushd "$world_dir/src/basefom/_fomxml"
+function build_fakefom() {
+    local fakefom_dir="$xmodel_root_dir/world/src/basefom/_fomxml"
+    pushd $fakefom_dir
     dpkg-buildpackage -us -uc
+    if [[ $? -ne 0 ]];then
+        exit 5
+    fi
     dpkg -i ../*.deb
     popd
+}
 
+function build_world() {
+    local world_dir="$xmodel_root_dir/world"
     "$world_dir/$build_deb_pack" -a amd64 -r $revision -v $version -p world -s "$world_dir"
     if [[ $? -ne 0 ]];then
         exit 3
@@ -74,9 +81,10 @@ function usage() {
     echo "-h — show this help"
     echo "-x — xmodel root dir"
     echo "-V — project version"
-    echo "-R — project revision"
-    echo "-p — build only this project"
-    echo "-n — no remove installed packages"
+    echo "-R — Ревизия собираемых проектов"
+    echo "-p — Собрать и установить только указанный проект. Может быть несколько опций"
+    echo "-n — Не удалять установленные пакеты проектов"
+    echo "-r — Удалить пакеты проекта. Проекты не собирать"
 }
 
 if [[ "$(id -u)" != "0" ]];then
@@ -85,7 +93,8 @@ if [[ "$(id -u)" != "0" ]];then
 fi
 
 declare -a user_projects
-while getopts x:V:p:R:hn opt
+declare -a remove_projects_packages
+while getopts x:V:p:r:R:hn opt
 do
     case "$opt" in
         x) xmodel_root_dir=`readlink -e "$OPTARG"`;;
@@ -93,7 +102,8 @@ do
         V) version=$OPTARG;;
         R) revision=$OPTARG;;
         p) user_projects+=( $OPTARG );;
-        n) no_remove=true
+        n) no_remove=true;;
+        r) remove_project_packages+=( $OPTARG );;
     esac
 done
 
@@ -101,6 +111,17 @@ if [[ -z "$xmodel_root_dir" ]]; then
     echo "xmodel_root_dir not set or not exist"
     exit 1
 fi
+
+for project in ${remove_project_packages[@]}
+do
+    remove_packages $project
+done
+
+if [[ ${#remove_project_packages[@]} != 0 ]]; then
+    exit 0
+fi
+
+### TODO: проверить наличие всех проектов в дереве
 
 build_projects=${projects[@]}
 
