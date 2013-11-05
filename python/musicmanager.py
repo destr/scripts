@@ -9,16 +9,24 @@ import sys
 
 from argparse import ArgumentParser
 
+class FormatException(Exception):
+    def __init__(self, files):
+        Exception.__init__(self)
+        self.files = files
 
-class CopyMusic :
+    def __str__(self):
+        return "File with format errors: \n" + '\n'.join(self.files)
+
+class CopyMusic:
 
     def __init__(self):
         self.opt = None
         self.image_cache = dict()
         self.img_ext = ['.jpg', '.jpeg', '.png']
         self.bad_char_re = re.compile(r'[<>:"\|?*]+')
-        self.check_format_re = re.compile(r".*/.+/\d{4} .+/(\d{2,3} - \S.*\.mp3$)")
+        self.check_format_re = re.compile(r".*/.+/\d{4} .+/\d{2,3} - (\S|\S.*\S)\.mp3$")
         self.eyeD3 = imp.load_source('eyed3', '/usr/bin/eyeD3')
+
 
     def __clean_path(self, path):
         return self.bad_char_re.sub('_', path)
@@ -59,7 +67,7 @@ class CopyMusic :
                     print("%s -> %s" % (srcfile, dstfile))
                     shutil.copy(srcfile, dstfile)
 
-            sys.argv = ['--set-encoding=utf16-LE', self.opt.dst]
+            sys.argv = ['/usr/bin/eyeD3', '--set-encoding=utf16-LE', '--force-update', self.opt.dst]
             self.eyeD3.main()
 
     def write_tags(self):
@@ -74,7 +82,7 @@ class CopyMusic :
             for root, dirs, files in os.walk(path):
                 for file in files:
                     track_path = "%s/%s" % (root, file)
-                    print (track_path)
+                    #print (track_path)
                     if self.check_format_re.match(track_path):
                         tracks.append(track_path)
                     else:
@@ -84,10 +92,7 @@ class CopyMusic :
                             error_tracks.append(track_path)
 
                 if error_tracks:
-                    print("Format error in tracks:")
-                    for track_path in error_tracks:
-                        print(track_path)
-                        raise "Format error track"
+                    raise FormatException(error_tracks)
 
         for track in tracks:
             eyed3_opt = ['/usr/bin/eyeD3', '--remove-all', '--set-encoding=utf8']
@@ -98,6 +103,9 @@ class CopyMusic :
             img = self.__find_album_img(path_tokens)
             eyed3_opt.append('--add-image=%s:FRONT_COVER' % img)
 
+            if not self.opt.various:
+                eyed3_opt.append('--artist=%s' % path_tokens[1])
+
             year, album_name = path_tokens[2].split(' ', 1)
             eyed3_opt.append('--year=%s' % year)
             eyed3_opt.append('--set-text-frame=TRDC:%s' % year)
@@ -105,14 +113,16 @@ class CopyMusic :
             eyed3_opt.append('--album=%s' % album_name)
 
             track_id, ignore, track_name = path_tokens[3].split(' ', 2)
+            if self.opt.various:
+                artist, track_name = track_name.split(' - ', 1)
+                eyed3_opt.append('--artist=%s' % artist)
+
             eyed3_opt.append('--track=%s' % track_id)
             eyed3_opt.append('--title=%s' % track_name.rsplit('.', 1)[0])
             eyed3_opt.append(track)
 
             sys.argv = eyed3_opt
-
             self.eyeD3.main()
-
 
     def __find_album_img(self, path_tokens):
         cache_key = (path_tokens[1], path_tokens[2])
@@ -140,7 +150,7 @@ class CopyMusic :
 
     def main(self):
         parser = ArgumentParser(description="Options")
-        parser.add_argument('-V', dest='various', help="Various artists")
+        parser.add_argument('-V', dest='various', action='store_true', help="Various artists")
 
         group = parser.add_mutually_exclusive_group()
         group.add_argument('-w', dest='write', action='store_true', help=u"Записать ID3 теги")
@@ -165,5 +175,8 @@ class CopyMusic :
 
 
 if __name__ == "__main__":
-    cm = CopyMusic()
-    cm.main()
+    try:
+        cm = CopyMusic()
+        cm.main()
+    except FormatException as e:
+        print e
