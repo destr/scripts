@@ -134,11 +134,11 @@ class CopyMusic:
             if os.path.exists(img_path):
                 # кешируем с ключом исполнитель, альбом
                 self.image_cache[cache_key] = img_path
-                print(self.image_cache)
                 return img_path
 
         while True:
-            print(u"Не найдено изображение для %s/%s. Продолжить? (y/n)" % cache_key)
+            str = "Не найдено изображение для %s/%s. Продолжить?" % cache_key
+            print(str)
             answer = raw_input().decode(sys.stdin.encoding).lower()
             if answer == "y":
                 self.image_cache[cache_key] = ""
