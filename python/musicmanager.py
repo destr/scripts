@@ -13,9 +13,12 @@ from argparse import ArgumentParser
 class CopyMusic :
 
     def __init__(self):
-        opt = None
+        self.opt = None
+        self.image_cache = dict()
+        self.img_ext = ['.jpg', '.jpeg', '.png']
         self.bad_char_re = re.compile(r'[<>:"\|?*]+')
-        self.check_format_re = re.compile(r".*/.+/\d{4} .+/(\d{2,3} - \S*\.mp3$)")
+        self.check_format_re = re.compile(r".*/.+/\d{4} .+/(\d{2,3} - \S.*\.mp3$)")
+        self.eyeD3 = imp.load_source('eyed3', '/usr/bin/eyeD3')
 
     def __clean_path(self, path):
         return self.bad_char_re.sub('_', path)
@@ -57,8 +60,7 @@ class CopyMusic :
                     shutil.copy(srcfile, dstfile)
 
             sys.argv = ['--set-encoding=utf16-LE', self.opt.dst]
-            eyeD3 = imp.load_source('eyed3', '/usr/bin/eyeD3')
-            eyeD3.main()
+            self.eyeD3.main()
 
     def write_tags(self):
         for path in self.opt.src:
@@ -73,33 +75,95 @@ class CopyMusic :
                 for file in files:
                     track_path = "%s/%s" % (root, file)
                     print (track_path)
-                    if not self.check_format_re.match(track_path):
-                        error_tracks.append(track_path)
-                    else:
+                    if self.check_format_re.match(track_path):
                         tracks.append(track_path)
+                    else:
+                        # если это картинка, то всё нормально
+                        ext = os.path.splitext(track_path)
+                        if ext[-1] not in self.img_ext:
+                            error_tracks.append(track_path)
 
-                if not error_tracks:
-                    print "Format error in tracks:"
+                if error_tracks:
+                    print("Format error in tracks:")
                     for track_path in error_tracks:
-                        print track_path
+                        print(track_path)
+                        raise "Format error track"
 
+        for track in tracks:
+            eyed3_opt = ['/usr/bin/eyeD3', '--remove-all', '--set-encoding=utf8']
+
+            # разбиваем на куски
+            path_tokens = track.rsplit('/', 3)
+
+            img = self.__find_album_img(path_tokens)
+            eyed3_opt.append('--add-image=%s:FRONT_COVER' % img)
+
+            year, album_name = path_tokens[2].split(' ', 1)
+            eyed3_opt.append('--year=%s' % year)
+            eyed3_opt.append('--set-text-frame=TRDC:%s' % year)
+            eyed3_opt.append('--set-text-frame=TYER:%s' % year)
+            eyed3_opt.append('--album=%s' % album_name)
+
+            track_id, ignore, track_name = path_tokens[3].split(' ', 2)
+            eyed3_opt.append('--track=%s' % track_id)
+            eyed3_opt.append('--title=%s' % track_name.rsplit('.', 1)[0])
+            eyed3_opt.append(track)
+
+            sys.argv = eyed3_opt
+
+            self.eyeD3.main()
+
+
+    def __find_album_img(self, path_tokens):
+        cache_key = (path_tokens[1], path_tokens[2])
+        if cache_key in self.image_cache:
+            return self.image_cache[cache_key]
+        basedir = "/".join(path_tokens[:-1])
+        for ext in self.img_ext:
+            img_path = os.path.join(basedir, "%s%s" % (path_tokens[2], ext))
+            if os.path.exists(img_path):
+                # кешируем с ключом исполнитель, альбом
+                self.image_cache[cache_key] = img_path
+                print(self.image_cache)
+                return img_path
+
+        while True:
+            print(u"Не найдено изображение для %s/%s. Продолжить? (y/n)" % cache_key)
+            answer = raw_input().decode(sys.stdin.encoding).lower()
+            if answer == "y":
+                self.image_cache[cache_key] = ""
+                return ""
+            elif answer == "n":
+                raise "Not fount image for %s/%s" % cache_key
+            else:
+                continue
 
     def main(self):
         parser = ArgumentParser(description="Options")
         parser.add_argument('-V', dest='various', help="Various artists")
 
-        parser.add_argument("-a", dest='src', action='append', help='Sources dirs')
-        parser.add_argument("-d", dest='dst', action='store', help='Destination dir', required=True)
-        parser.add_argument("-b", dest='base', action='store', help='Base music dir', required=True)
-        parser.add_argument('-')
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('-w', dest='write', action='store_true', help=u"Записать ID3 теги")
+        group.add_argument('-c', dest='copy', action='store_true', help=u"Скопировать car music")
+
+        parser.add_argument("-a", dest='src', action='append', help='Sources dirs', required=True)
+        parser.add_argument("-d", dest='dst', action='store', help='Destination dir')
+        parser.add_argument("-b", dest='base', action='store', help='Base music dir')
 
         self.opt = parser.parse_args()
 
-        if self.opt.src:
+        if self.opt.write:
+            self.write_tags()
+            return
+
+        if self.opt.copy:
+            if self.opt.dst is None or self.opt.base is None:
+                raise "option -b and -d required for option c"
             self.copy()
+
+            return
 
 
 if __name__ == "__main__":
-
     cm = CopyMusic()
     cm.main()
