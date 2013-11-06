@@ -25,6 +25,7 @@ class CopyMusic:
         self.img_ext = ['.jpg', '.jpeg', '.png']
         self.bad_char_re = re.compile(r'[<>:"\|?*]+')
         self.check_format_re = re.compile(r".*/.+/\d{4} .+/\d{2,3} - (\S|\S.*\S)\.mp3$")
+        self.temp = '/tmp/car_music'
         self.eyeD3 = imp.load_source('eyed3', '/usr/bin/eyeD3')
 
 
@@ -50,25 +51,32 @@ class CopyMusic:
             print(subpath)
 
             # создаём каталог в котором будем создавать дерево
-            os.makedirs(os.path.join(self.opt.dst, subpath))
+            if os.path.exists(self.temp):
+                shutil.rmtree(self.temp)
+
+            os.makedirs(os.path.join(self.temp, subpath))
 
             for root, dirs, files in os.walk(path):
 
                 subpath = root[pos:]
                 print(subpath)
-                dstpath = os.path.join(self.opt.dst, subpath)
+                dstpath = os.path.join(self.temp, subpath)
                 dstpath = self.__clean_path(dstpath)
                 if not os.path.exists(dstpath):
                     os.makedirs(dstpath)
 
                 for file in files:
+                    if not file.endswith('.mp3'):
+                        continue
                     srcfile = "%s/%s" % (root, file)
                     dstfile = "%s/%s" % (dstpath, self.__clean_path(file))
                     print("%s -> %s" % (srcfile, dstfile))
                     shutil.copy(srcfile, dstfile)
+                    sys.argv = ['/usr/bin/eyeD3', '--set-encoding=utf16-LE', '--force-update', dstfile]
+                    if self.eyeD3.main():
+                        raise StandardError("Write tag error: %s" % dstfile)
 
-            sys.argv = ['/usr/bin/eyeD3', '--set-encoding=utf16-LE', '--force-update', self.opt.dst]
-            self.eyeD3.main()
+                shutil.copytree(self.temp, self.opt.dst)
 
     def write_tags(self):
         for path in self.opt.src:
