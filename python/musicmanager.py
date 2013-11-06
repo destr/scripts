@@ -76,7 +76,13 @@ class CopyMusic:
                     if self.eyeD3.main():
                         raise StandardError("Write tag error: %s" % dstfile)
 
-                shutil.copytree(self.temp, self.opt.dst)
+            for item in os.listdir(self.temp):
+                s = os.path.join(self.temp, item)
+                d = os.path.join(self.opt.dst, item)
+                if os.path.isdir(s):
+                    shutil.copytree(s, d)
+                else:
+                    shutil.copy2(s, d)
 
     def write_tags(self):
         for path in self.opt.src:
