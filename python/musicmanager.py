@@ -201,4 +201,8 @@ if __name__ == "__main__":
         cm = CopyMusic()
         cm.main()
     except FormatException as e:
-        print e
+        print(e)
+        exit(1)
+    except SystemExit as e:
+        print(e)
+        exit(2)
