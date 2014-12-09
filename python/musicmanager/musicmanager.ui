@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>MusicManager</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_6">
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <property name="leftMargin">
     <number>5</number>
    </property>
@@ -27,39 +27,7 @@
     <number>5</number>
    </property>
    <item>
-    <widget class="QGroupBox" name="groupBoxMusicDir">
-     <property name="title">
-      <string>Music dir</string>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <property name="leftMargin">
-       <number>5</number>
-      </property>
-      <property name="topMargin">
-       <number>5</number>
-      </property>
-      <property name="rightMargin">
-       <number>5</number>
-      </property>
-      <property name="bottomMargin">
-       <number>5</number>
-      </property>
-      <item>
-       <widget class="QLineEdit" name="lineEditMusicDir">
-        <property name="placeholderText">
-         <string>Select music dir...</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButtonSelectMusicDir">
-        <property name="text">
-         <string>Select...</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
+    <widget class="DirSelector" name="widgetMusicDir" native="true"/>
    </item>
    <item>
     <widget class="QGroupBox" name="groupBoxContent">
@@ -93,23 +61,14 @@
     </widget>
    </item>
    <item>
+    <widget class="DirSelector" name="widgetFlashDir" native="true"/>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBoxActions">
      <property name="title">
       <string>Actions</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
-      <property name="leftMargin">
-       <number>5</number>
-      </property>
-      <property name="topMargin">
-       <number>5</number>
-      </property>
-      <property name="rightMargin">
-       <number>5</number>
-      </property>
-      <property name="bottomMargin">
-       <number>5</number>
-      </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
@@ -188,25 +147,19 @@
         </item>
        </layout>
       </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayoutMounted" stretch="0,1">
-        <item>
-         <widget class="QLabel" name="labelMountedFlash">
-          <property name="text">
-           <string>Mounted flash</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="comboBoxMountedFlash"/>
-        </item>
-       </layout>
-      </item>
      </layout>
     </widget>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DirSelector</class>
+   <extends>QWidget</extends>
+   <header location="global">dirselector.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
