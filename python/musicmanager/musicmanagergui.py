@@ -5,7 +5,7 @@ import os
 
 from PyQt5.QtCore import QCoreApplication, QByteArray
 from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QDialog, QApplication, QFileDialog
+from PyQt5.QtWidgets import QDialog, QApplication, QFileDialog, QHeaderView
 from ui_musicmanager import Ui_MusicManager
 
 from checkablefilesystemmodel import CheckableFileSystemModel
@@ -18,6 +18,10 @@ class MusicManager(QDialog):
 
         self.model = CheckableFileSystemModel(self.ui.treeView)
         self.ui.treeView.setModel(self.model)
+        self.ui.treeView.hideColumn(1)
+        self.ui.treeView.hideColumn(2)
+        self.ui.treeView.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+
 
         self.ui.pushButtonCancel.clicked.connect(self.cancel)
         self.ui.pushButtonSelectMusicDir.clicked.connect(self.selectMusicDir)
