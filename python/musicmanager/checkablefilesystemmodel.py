@@ -1,8 +1,10 @@
 #coding=utf-8
 __author__ = 'destr'
 
+import os
 from PyQt5.QtWidgets import QFileSystemModel
 from PyQt5 import QtCore
+from filecmp import dircmp
 
 class State:
     def __init__(self):
@@ -19,14 +21,32 @@ class CheckableFileSystemModel(QFileSystemModel):
         self.directoryLoaded.connect(self.__changeChildState)
 
     def data(self, index, role=None):
+
         if role == QtCore.Qt.CheckStateRole and index.column() == 0:
+
             filepath = self.filePath(index)
-            if filepath in self.states:
-                return self.states[filepath]
-            else:
-                return QtCore.Qt.Unchecked
+            return self.__state(filepath)
 
         return QFileSystemModel.data(self, index, role)
+
+    def setExistingDirs(self, rootdir, dirs):
+        for path in dirs:
+            musicpath = os.path.join(self.rootPath(), path)
+            flashpath = os.path.join(rootdir, path)
+            if os.path.isdir(flashpath):
+                dcmp = dircmp(flashpath, musicpath)
+                if dcmp.right_only:
+                    # всем кто выше по пути надо ставить partialcheck
+                    self.states[musicpath] = QtCore.Qt.PartiallyChecked
+                    subdirpath = self.rootPath()
+                    for subdir in path.split("/"):
+                        subdirpath = os.path.join(subdirpath, subdir)
+
+                        self.states[subdirpath] = QtCore.Qt.PartiallyChecked
+                else:
+                    self.states[musicpath] = QtCore.Qt.Checked
+            else:
+                self.states[musicpath] = QtCore.Qt.Checked
 
     def setData(self, index, data, role=None):
         if role == QtCore.Qt.CheckStateRole:
@@ -34,7 +54,7 @@ class CheckableFileSystemModel(QFileSystemModel):
             self.__childState(index, data)
 
             p = index.parent()
-            while self.__partialCheck(p):
+            while self.__partialCheck(p) is not None:
                 p = p.parent()
             return True
 
@@ -68,7 +88,6 @@ class CheckableFileSystemModel(QFileSystemModel):
         for row in range(0, self.rowCount(index)):
             childIndex = self.index(row, 0, index)
             statekey = self.filePath(childIndex)
-
             if row == 0:
                 state = self.__state(statekey)
 
@@ -78,6 +97,7 @@ class CheckableFileSystemModel(QFileSystemModel):
 
         self.__setState(index, state)
         self.dataChanged.emit(index, index)
+
         return state
 
     def __childState(self, parent, data):
@@ -92,8 +112,9 @@ class CheckableFileSystemModel(QFileSystemModel):
         return
 
     def __state(self, key):
+
         if key in self.states:
-            return QtCore.Qt.Checked
+            return self.states[key]
 
         return QtCore.Qt.Unchecked
 
@@ -103,3 +124,5 @@ class CheckableFileSystemModel(QFileSystemModel):
             self.states.pop(filename, None)
         else:
             self.states[filename] = data
+
+

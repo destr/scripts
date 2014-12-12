@@ -16,6 +16,8 @@ class MusicManager(QDialog):
         self.ui = Ui_MusicManager()
         self.ui.setupUi(self)
 
+        self.existingdirs = list()
+
         self.model = CheckableFileSystemModel(self.ui.treeView)
         self.ui.treeView.setModel(self.model)
         self.ui.treeView.hideColumn(1)
@@ -28,24 +30,40 @@ class MusicManager(QDialog):
 
         self.ui.widgetFlashDir.setPlaceholderText("Select flash dir...")
         self.ui.widgetFlashDir.setTitle("Flash dir")
-        self.ui.widgetMusicDir.directorySelected.connect(self.setFlashDir)
+        self.ui.widgetFlashDir.directorySelected.connect(self.setFlashDir)
+
+        self.ui.comboBoxAction.currentIndexChanged.connect(self.actionChanged)
 
         self.ui.pushButtonCancel.clicked.connect(self.cancel)
 
         self.__loadSettings()
+
+        self.actionChanged(0)
 
     def setDir(self, value):
         self.model.setRootPath(value)
         self.ui.treeView.setRootIndex(self.model.index(value))
 
     def setFlashDir(self, value):
-        pass
+        valuelen = len(value) + 1
+        for root, dirs, files in os.walk(value):
+            subroot = root[valuelen:]
+            self.existingdirs.append(subroot)
+            for file in files:
+                self.existingdirs.append("{0}/{1}".format(subroot, file))
+
+        self.model.setExistingDirs(value, self.existingdirs)
+
+
+    def actionChanged(self, index):
+        en = index != 0
+        self.ui.widgetFlashDir.setEnabled(en)
 
     def closeEvent(self, event):
         self.__saveSettings()
 
     def cancel(self):
-        print("Cancel")
+        self.close()
 
     def selectMusicDir(self):
         path = QFileDialog.getExistingDirectory(self, "Select music dir", os.path.expanduser('~'))
